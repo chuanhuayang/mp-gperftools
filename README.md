@@ -1,2 +1,2 @@
 # mp-gperoftools
-add some changes to support multi process program
+add some changes in gperftools to support multi process program
