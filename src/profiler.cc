@@ -68,7 +68,7 @@ typedef int ucontext_t;   // just to quiet the compiler, mostly
 #ifdef HAVE_CONFLICT_SIGNAL_H
 #include "conflict-signal.h"          /* used on msvc machines */
 #endif
-#define MY_LOG_NAME "my_heapchecker_log"
+#define MY_LOG_NAME "my_cpuprofiler_log"
 
 using std::string;
 
