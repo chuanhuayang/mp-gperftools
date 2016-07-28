@@ -52,6 +52,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <assert.h>
+#include <signal.h>
 
 #if defined(HAVE_LINUX_PTRACE_H)
 #include <linux/ptrace.h>
@@ -106,7 +107,28 @@ using std::min;
 using std::max;
 using std::less;
 using std::char_traits;
+#define MY_LOG_NAME "mylog"
+void write_file(string file, string str){
+  FILE *fp;
+  if((fp=fopen(file.c_str(),"a")) >=0) {
+    fprintf(fp," %s,pid=%d\n",str.c_str(),getpid());
+    fclose(fp);
+  }
+}
+void write_file(string file, string str, int pid){
+  FILE *fp;
+  if((fp=fopen(file.c_str(),"a")) >=0) {
+    fprintf(fp," %s = %d,pid=%d\n",str.c_str(),pid,getpid());
+    fclose(fp);
+  }
+}
 
+void sig_handler(int signo){
+  if (signo == SIGUSR1){
+    write_file(MY_LOG_NAME,"received SIGUSR1");
+    exit(0);
+  } 
+}
 // If current process is being ptrace()d, 'TracerPid' in /proc/self/status
 // will be non-zero.
 static bool IsDebuggerAttached(void) {    // only works under linux, probably
@@ -246,8 +268,8 @@ static SpinLock heap_checker_lock(SpinLock::LINKER_INITIALIZED);
 
 // Heap profile prefix for leak checking profiles.
 // Gets assigned once when leak checking is turned on, then never modified.
-static const string* profile_name_prefix = NULL;
-
+//static const string* profile_name_prefix = NULL;
+static string* profile_name_prefix = NULL;
 // Whole-program heap leak checker.
 // Gets assigned once when leak checking is turned on,
 // then main_heap_checker is never deleted.
@@ -1710,6 +1732,7 @@ static void SuggestPprofCommand(const char* pprof_file_arg) {
 }
 
 bool HeapLeakChecker::DoNoLeaks(ShouldSymbolize should_symbolize) {
+  write_file(MY_LOG_NAME,"DoNoleaks called");
   SpinLockHolder l(lock_);
   // The locking also helps us keep the messages
   // for the two checks close together.
@@ -1728,7 +1751,11 @@ bool HeapLeakChecker::DoNoLeaks(ShouldSymbolize should_symbolize) {
 
   HeapProfileTable::Snapshot* leaks = NULL;
   char* pprof_file = NULL;
-
+  //add the pid as part of profile_name_prefix
+  const int32 our_pid = getpid();
+  char pid_buf[15];
+  snprintf(pid_buf, sizeof(pid_buf), ".%d",our_pid);
+  *profile_name_prefix += pid_buf;//因为这里会重新申请内存，所以，不能放到锁里面:
   {
     // Heap activity in other threads is paused during this function
     // (i.e. until we got all profile difference info).
@@ -1810,12 +1837,13 @@ bool HeapLeakChecker::DoNoLeaks(ShouldSymbolize should_symbolize) {
     }
 
     if (leaks != NULL) {
-      pprof_file = MakeProfileNameLocked();
+      pprof_file = MakeProfileNameLocked();//这里已经是完整的名字，带路径
     }
   }
 
   has_checked_ = true;
   if (leaks == NULL) {
+	write_file(MY_LOG_NAME,"DoNoLeaks called, no leaks found");
     if (FLAGS_heap_check_max_pointer_offset == -1) {
       RAW_LOG(WARNING,
               "Found no leaks without max_pointer_offset restriction: "
@@ -1833,6 +1861,7 @@ bool HeapLeakChecker::DoNoLeaks(ShouldSymbolize should_symbolize) {
              int64(stats.allocs - stats.frees),
              int64(stats.alloc_size - stats.free_size));
   } else {
+	write_file(MY_LOG_NAME,"DoNoLeaks called, some leaks found");
     if (should_symbolize == SYMBOLIZE) {
       // To turn addresses into symbols, we need to fork, which is a
       // problem if both parent and child end up trying to call the
@@ -1911,10 +1940,11 @@ HeapCleaner::HeapCleaner(void_function f) {
   if (heap_cleanups_ == NULL)
     heap_cleanups_ = new vector<HeapCleaner::void_function>;
   heap_cleanups_->push_back(f);
-}
+} 
 
 // Run all of the cleanup functions and delete the vector.
 void HeapCleaner::RunHeapCleanups() {
+  write_file(MY_LOG_NAME,"run heapcleanups called");
   if (!heap_cleanups_)
     return;
   for (int i = 0; i < heap_cleanups_->size(); i++) {
@@ -1929,14 +1959,22 @@ void HeapCleaner::RunHeapCleanups() {
 // Will not get executed when we crash on a signal.
 //
 void HeapLeakChecker_RunHeapCleanups() {
+  write_file(MY_LOG_NAME,"HeapLeakChecker_RunHeapCleanups start");
   if (FLAGS_heap_check == "local")   // don't check heap in this mode
     return;
+  write_file(MY_LOG_NAME,"heap_checker_pid=",heap_checker_pid);
   { SpinLockHolder l(&heap_checker_lock);
     // can get here (via forks?) with other pids
-    if (heap_checker_pid != getpid()) return;
+    // if (heap_checker_pid != getpid()) return;
   }
+
   HeapCleaner::RunHeapCleanups();
-  if (!FLAGS_heap_check_after_destructors) HeapLeakChecker::DoMainHeapCheck();
+  if (!FLAGS_heap_check_after_destructors) {
+	write_file(MY_LOG_NAME,"DoMainHeapCheck start");
+	HeapLeakChecker::DoMainHeapCheck();
+  	write_file(MY_LOG_NAME,"DoMainHeapCheck end");
+  }
+  write_file(MY_LOG_NAME,"HeapLeakChecker_RunHeapCleanups end ");
 }
 
 static bool internal_init_start_has_run = false;
@@ -1952,6 +1990,11 @@ static bool internal_init_start_has_run = false;
 // on a memory allocation since our new/delete hooks can be on.
 //
 void HeapLeakChecker_InternalInitStart() {
+  write_file(MY_LOG_NAME,"internalInitStart!");
+  if (signal(SIGUSR1, sig_handler) == SIG_ERR){
+      write_file(MY_LOG_NAME,"\n can't catch SIGUSR1");
+  }
+
   { SpinLockHolder l(&heap_checker_lock);
     RAW_CHECK(!internal_init_start_has_run,
               "Heap-check constructor called twice.  Perhaps you both linked"
@@ -1962,6 +2005,7 @@ void HeapLeakChecker_InternalInitStart() {
     // AddressSanitizer's custom malloc conflicts with HeapChecker.
     FLAGS_heap_check = "";
 #endif
+	
 
     if (FLAGS_heap_check.empty()) {
       // turns out we do not need checking in the end; can stop profiling
@@ -1976,6 +2020,7 @@ void HeapLeakChecker_InternalInitStart() {
   }
 
   // Changing this to false can be useful when debugging heap-checker itself:
+  
   if (!FLAGS_heap_check_run_under_gdb && IsDebuggerAttached()) {
     RAW_LOG(WARNING, "Someone is ptrace()ing us; will turn itself off");
     SpinLockHolder l(&heap_checker_lock);
@@ -2065,13 +2110,14 @@ void HeapLeakChecker_InternalInitStart() {
     if (main_thread_pid == 0)
       main_thread_pid = our_pid;
   }
-  char pid_buf[15];
-  snprintf(pid_buf, sizeof(pid_buf), ".%d", main_thread_pid);
-  *profile_prefix += pid_buf;
+  //char pid_buf[15];
+  //snprintf(pid_buf, sizeof(pid_buf), ".%d", main_thread_pid);
+  //*profile_prefix += pid_buf;
   { SpinLockHolder l(&heap_checker_lock);
     RAW_DCHECK(profile_name_prefix == NULL, "");
     profile_name_prefix = profile_prefix;
   }
+  write_file(MY_LOG_NAME,"profile_name_prefix initialed");
 
   // Make sure new/delete hooks are installed properly
   // and heap profiler is indeed able to keep track
@@ -2099,7 +2145,7 @@ void HeapLeakChecker_InternalInitStart() {
 
   RAW_VLOG(heap_checker_info_level,
            "WARNING: Perftools heap leak checker is active "
-           "-- Performance may suffer");
+           "-- Performance may suffer--test");
 
   if (FLAGS_heap_check != "local") {
     HeapLeakChecker* main_hc = new HeapLeakChecker();
@@ -2257,6 +2303,7 @@ static bool has_called_before_constructors = false;
 // MallocHook_InitAtFirstAllocation_HeapLeakChecker, and also rename
 // HeapLeakChecker::BeforeConstructorsLocked.
 void HeapLeakChecker_BeforeConstructors() {
+  //write_file(MY_LOG_NAME,"before constructor");
   SpinLockHolder l(&heap_checker_lock);
   // We can be called from several places: the first mmap/sbrk/alloc call
   // or the first global c-tor from heap-checker-bcad.cc:
@@ -2304,16 +2351,35 @@ void HeapLeakChecker_BeforeConstructors() {
 // track absolutely all memory allocations and all memory region acquisitions
 // via mmap and sbrk.
 extern "C" void MallocHook_InitAtFirstAllocation_HeapLeakChecker() {
+  //write_file(MY_LOG_NAME,"MallocHook_InitAtFirstAllocation_HeapLeakChecker");
   HeapLeakChecker_BeforeConstructors();
 }
 
 // This function is executed after all global object destructors run.
 void HeapLeakChecker_AfterDestructors() {
+  write_file(MY_LOG_NAME,"HeapLeakChecker_AfterDestructors start");
+
+  
+  //Finalize prefix for dumping leak checking profiles.
+  //const int32 our_pid = getpid();   // safest to call getpid() outside lock
+  //char pid_buf[15];
+  //snprintf(pid_buf, sizeof(pid_buf), ".%d",our_pid);//这下面会卡住
+  //*profile_name_prefix += pid_buf;
+  /*
+  { SpinLockHolder l(&heap_checker_lock);
+    *profile_name_prefix += pid_buf;//因为这里可能要开辟内存，所以不能将这一句放到锁中，否则会死锁
+  }*/
+  
+  write_file(MY_LOG_NAME,"profile_name_prefix updated");  
+  
+  /*
   { SpinLockHolder l(&heap_checker_lock);
     // can get here (via forks?) with other pids
-    if (heap_checker_pid != getpid()) return;
+    // if (heap_checker_pid != getpid()) return;
   }
+  */
   if (FLAGS_heap_check_after_destructors) {
+	write_file(MY_LOG_NAME,"HeapLeakChecker_AfterDestructors start____DoMainHeapCheck called");
     if (HeapLeakChecker::DoMainHeapCheck()) {
       const struct timespec sleep_time = { 0, 500000000 };  // 500 ms
       nanosleep(&sleep_time, NULL);
@@ -2321,6 +2387,7 @@ void HeapLeakChecker_AfterDestructors() {
         // Otherwise tcmalloc find errors
         // on a free() call from pthreads.
     }
+	write_file(MY_LOG_NAME,"*******************************HeapLeakChecker_AfterDestructors_DoMainHeapCheck end*************************");
   }
   SpinLockHolder l(&heap_checker_lock);
   RAW_CHECK(!do_main_heap_check, "should have done it");
