@@ -68,6 +68,7 @@ typedef int ucontext_t;   // just to quiet the compiler, mostly
 #ifdef HAVE_CONFLICT_SIGNAL_H
 #include "conflict-signal.h"          /* used on msvc machines */
 #endif
+#define MY_LOG_NAME "my_heapchecker_log"
 
 using std::string;
 
@@ -76,6 +77,21 @@ DEFINE_bool(cpu_profiler_unittest,
             "Determines whether or not we are running under the \
              control of a unit test. This allows us to include or \
 			 exclude certain behaviours.");
+
+void write_file(string file, string str){
+  FILE *fp;
+  if((fp=fopen(file.c_str(),"a")) >=0) {
+    fprintf(fp," %s,pid=%d\n",str.c_str(),getpid());
+    fclose(fp);
+  }
+}
+void write_file(string file, string str, int pid){
+  FILE *fp;
+  if((fp=fopen(file.c_str(),"a")) >=0) {
+    fprintf(fp," %s = %d,pid=%d\n",str.c_str(),pid,getpid());
+    fclose(fp);
+  }
+}
 
 // Collects up all profile data. This is a singleton, which is
 // initialized by a constructor at startup. If no cpu profiler
@@ -180,8 +196,7 @@ static void CpuProfilerSwitch(int signal_number)
 CpuProfiler CpuProfiler::instance_;
 
 // Initialize profiling: activated if getenv("CPUPROFILE") exists.
-CpuProfiler::CpuProfiler()
-    : prof_handler_token_(NULL) {
+CpuProfiler::CpuProfiler(): prof_handler_token_(NULL) {
   // TODO(cgd) Move this code *out* of the CpuProfile constructor into a
   // separate object responsible for initialization. With ProfileHandler there
   // is no need to limit the number of profilers.
@@ -222,7 +237,7 @@ CpuProfiler::CpuProfiler()
         RAW_LOG(WARNING, "CPU profiler linked but no valid CPUPROFILE environment variable found\n");
       }
       return;
-	}
+	  } 
 
     if (!Start(fname, NULL)) {
       RAW_LOG(FATAL, "Can't turn on cpu profiling for '%s': %s\n",
