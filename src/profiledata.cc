@@ -105,7 +105,7 @@ bool ProfileData::Start(const char* fname,
   }
   */
   start_time_ = time(NULL);
-  fname_ = strdup(fname);
+  //fname_ = strdup(fname);
 
   // Reset counters
   num_evicted_ = 0;
@@ -163,15 +163,17 @@ static void DumpProcSelfMaps(int fd) {
     FDWrite(fd, linebuf.buf_, written);
   }
 }
-
-void ProfileData::Stop(const char* fname){
+// 新添加的接口
+void ProfileData::Stop(char* fname){
     //append getpid after the fname.
+  GetEnvAppendPid("CPUPROFILE",fname);
   int fd = open(fname, O_CREAT | O_WRONLY | O_TRUNC, 0666);
   if (fd < 0) {
     // Can't open outfile for write
     return;
   }
   out_ = fd;
+  fname_ = strdup(fname);
   Stop();
 }
 

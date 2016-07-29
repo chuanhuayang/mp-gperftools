@@ -70,6 +70,7 @@ typedef int ucontext_t;   // just to quiet the compiler, mostly
 #endif
 #define MY_LOG_NAME "my_cpuprofiler_log"  
 
+
 using std::string;
 
 DEFINE_bool(cpu_profiler_unittest,
@@ -104,6 +105,7 @@ void write_log(string file, string str, int pid){
 // This is very useful for profiling a daemon process without
 // having to start and stop the daemon or having to modify the
 // source code to use the cpu profiler API.
+char fname[PATH_MAX];
 class CpuProfiler {
  public:
   CpuProfiler();
@@ -113,7 +115,7 @@ class CpuProfiler {
   bool Start(const char* fname, const ProfilerOptions* options);
 
   // Stop profiling and write the data to disk.
-  void Stop();
+  void Stop(char* fname = NULL);
 
   // Write the data to disk (and continue profiling).
   void FlushTable();
@@ -228,8 +230,10 @@ CpuProfiler::CpuProfiler(): prof_handler_token_(NULL) {
       RAW_LOG(FATAL, "Signal number %s is invalid\n", signal_number_str);
     }
   } else {
-    char fname[PATH_MAX];
-    if (!GetUniquePathFromEnv("CPUPROFILE", fname)) {
+    //char fname[PATH_MAX];
+    //if (!GetUniquePathFromEnv("CPUPROFILE", fname)) {
+    char *cpu_profiler = getenv("CPUPROFILE");
+    if(cpu_profiler ==NULL|| *cpu_profiler=='\0'){
       if (!FLAGS_cpu_profiler_unittest) {
         RAW_LOG(WARNING, "CPU profiler linked but no valid CPUPROFILE environment variable found\n");
       }
@@ -257,6 +261,7 @@ bool CpuProfiler::Start(const char* fname, const ProfilerOptions* options) {
 
   ProfileData::Options collector_options;
   collector_options.set_frequency(prof_handler_state.frequency);
+  write_log(MY_LOG_NAME,"profiledata start called");
   if (!collector_.Start(fname, collector_options)) {
     return false;
   }
@@ -274,16 +279,17 @@ bool CpuProfiler::Start(const char* fname, const ProfilerOptions* options) {
 }
 
 CpuProfiler::~CpuProfiler() {
-  write_log(MY_LOG_NAME,"CpuProfiler stop called");
-  Stop();
+  write_log(MY_LOG_NAME,"CpuProfiler destructor called");
+  Stop(fname);
 }
 
 // Stop profiling and write out any collected profile data
-void CpuProfiler::Stop() {
+void CpuProfiler::Stop(char* fname) {
+  write_log(MY_LOG_NAME,"CpuProfiler stop  called");
   SpinLockHolder cl(&lock_);
 
   if (!collector_.enabled()) {
-    return;
+    //return;
   }
 
   // Unregister prof_handler to stop receiving SIGPROF interrupts before
@@ -292,7 +298,12 @@ void CpuProfiler::Stop() {
 
   // DisableHandler waits for the currently running callback to complete and
   // guarantees no future invocations. It is safe to stop the collector.
-  collector_.Stop();
+  write_log(MY_LOG_NAME,"profiledata stop called");
+  if(fname !=NULL){
+     collector_.Stop(fname);
+  }else{
+     collector_.Stop();
+  }
 }
 
 void CpuProfiler::FlushTable() {
