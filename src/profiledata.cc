@@ -275,7 +275,7 @@ void ProfileData::FlushTable() {
 
 void ProfileData::Add(int depth, const void* const* stack) {
   if (!enabled()) {
-    return;
+   // return;
   }
 
   if (depth > kMaxStackDepth) depth = kMaxStackDepth;
