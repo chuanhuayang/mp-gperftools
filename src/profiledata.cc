@@ -96,12 +96,14 @@ bool ProfileData::Start(const char* fname,
   }
 
   // Open output file and initialize various data structures
+  /*
+  //do this operation in the stop step;
   int fd = open(fname, O_CREAT | O_WRONLY | O_TRUNC, 0666);
   if (fd < 0) {
     // Can't open outfile for write
     return false;
   }
-
+  */
   start_time_ = time(NULL);
   fname_ = strdup(fname);
 
@@ -124,7 +126,7 @@ bool ProfileData::Start(const char* fname,
   evict_[num_evicted_++] = period;                // Period (microseconds)
   evict_[num_evicted_++] = 0;                     // Padding
 
-  out_ = fd;
+  //out_ = fd;
 
   return true;
 }
@@ -160,6 +162,17 @@ static void DumpProcSelfMaps(int fd) {
                                 0);
     FDWrite(fd, linebuf.buf_, written);
   }
+}
+
+void ProfileData::Stop(const char* fname){
+    //append getpid after the fname.
+  int fd = open(fname, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+  if (fd < 0) {
+    // Can't open outfile for write
+    return;
+  }
+  out_ = fd;
+  Stop();
 }
 
 void ProfileData::Stop() {

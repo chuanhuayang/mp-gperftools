@@ -78,20 +78,22 @@ DEFINE_bool(cpu_profiler_unittest,
              control of a unit test. This allows us to include or \
 			 exclude certain behaviours.");
 
-void write_file(string file, string str){
+
+void write_log(string file, string str){
   FILE *fp;
   if((fp=fopen(file.c_str(),"a")) >=0) {
     fprintf(fp," %s,pid=%d\n",str.c_str(),getpid());
     fclose(fp);
   }
 }
-void write_file(string file, string str, int pid){
+void write_log(string file, string str, int pid){
   FILE *fp;
   if((fp=fopen(file.c_str(),"a")) >=0) {
     fprintf(fp," %s = %d,pid=%d\n",str.c_str(),pid,getpid());
     fclose(fp);
   }
 }
+
 
 // Collects up all profile data. This is a singleton, which is
 // initialized by a constructor at startup. If no cpu profiler
@@ -158,11 +160,11 @@ class CpuProfiler {
 
 // Signal handler that is registered when a user selectable signal
 // number is defined in the environment variable CPUPROFILESIGNAL.
-static void CpuProfilerSwitch(int signal_number)
-{
-    bool static started = false;
+static void CpuProfilerSwitch(int signal_number){
+  write_log(MY_LOG_NAME,"CpuProfilerSwitch called");
+  bool static started = false;
 	static unsigned profile_count = 0;
-    static char base_profile_name[1024] = "\0";
+  static char base_profile_name[1024] = "\0";
 
 	if (base_profile_name[0] == '\0') {
     	if (!GetUniquePathFromEnv("CPUPROFILE", base_profile_name)) {
@@ -170,24 +172,18 @@ static void CpuProfilerSwitch(int signal_number)
         	return;
     	}
 	}
-    if (!started) 
-    {
-    	char full_profile_name[1024];
-
-		snprintf(full_profile_name, sizeof(full_profile_name), "%s.%u",
-                 base_profile_name, profile_count++);
-
-        if(!ProfilerStart(full_profile_name))
-        {
-            RAW_LOG(FATAL, "Can't turn on cpu profiling for '%s': %s\n",
-                    full_profile_name, strerror(errno));
-        }
-    }
-    else    
-    {
-        ProfilerStop();
-    }
-    started = !started;
+  if (!started) {
+  	  char full_profile_name[1024];
+	    snprintf(full_profile_name, sizeof(full_profile_name), "%s.%u",base_profile_name, profile_count++);
+      if(!ProfilerStart(full_profile_name)){
+          RAW_LOG(FATAL, "Can't turn on cpu profiling for '%s': %s\n",
+                  full_profile_name, strerror(errno));
+      }
+  }
+  else{
+      ProfilerStop();
+  }
+  started = !started;
 }
 
 // Profile data structure singleton: Constructor will check to see if
@@ -200,6 +196,7 @@ CpuProfiler::CpuProfiler(): prof_handler_token_(NULL) {
   // TODO(cgd) Move this code *out* of the CpuProfile constructor into a
   // separate object responsible for initialization. With ProfileHandler there
   // is no need to limit the number of profilers.
+  write_log(MY_LOG_NAME,"CpuProfiler initialized called");
   if (getenv("CPUPROFILE") == NULL) {
     if (!FLAGS_cpu_profiler_unittest) {
       RAW_LOG(WARNING, "CPU profiler linked but no valid CPUPROFILE environment variable found\n");
@@ -247,6 +244,8 @@ CpuProfiler::CpuProfiler(): prof_handler_token_(NULL) {
 }
 
 bool CpuProfiler::Start(const char* fname, const ProfilerOptions* options) {
+  write_log(MY_LOG_NAME,"CpuProfiler start function called");
+
   SpinLockHolder cl(&lock_);
 
   if (collector_.enabled()) {
@@ -275,6 +274,7 @@ bool CpuProfiler::Start(const char* fname, const ProfilerOptions* options) {
 }
 
 CpuProfiler::~CpuProfiler() {
+  write_log(MY_LOG_NAME,"CpuProfiler stop called");
   Stop();
 }
 
