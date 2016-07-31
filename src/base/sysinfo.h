@@ -70,6 +70,7 @@ extern const char* GetenvBeforeMain(const char* name);
 // reasons, as documented in sysinfo.cc.  path must have space PATH_MAX.
 extern bool GetUniquePathFromEnv(const char* env_name, char* path);
 extern bool GetEnvAppendPid(const char* env_name, char* path);
+extern bool GetOriginalEnv(const char* env_name, char* path);
 extern int GetSystemCPUsCount();
 
 void SleepForMilliseconds(int milliseconds);

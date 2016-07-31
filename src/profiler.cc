@@ -185,9 +185,9 @@ static void CpuProfilerSwitch(int signal_number){
       }
   }
   else{
-      snprintf(full_profile_name, sizeof(full_profile_name), "%s.%u",base_profile_name, profile_count++);
+	  snprintf(full_profile_name, sizeof(full_profile_name), "%s.%u",base_profile_name, profile_count++);
       write_log(MY_LOG_NAME,full_profile_name);
-      ProfilerStop(full_profile_name);
+	  ProfilerStop(full_profile_name);
   }
   started = !started;
 }
@@ -236,8 +236,7 @@ CpuProfiler::CpuProfiler(): prof_handler_token_(NULL) {
   } else {
     //char fname[PATH_MAX];
     //if (!GetUniquePathFromEnv("CPUPROFILE", fname)) {
-    char *cpu_profiler = getenv("CPUPROFILE");
-    if(cpu_profiler ==NULL|| *cpu_profiler=='\0'){
+    if(!GetOriginalEnv("CPUPROFILE",fname)){
       if (!FLAGS_cpu_profiler_unittest) {
         RAW_LOG(WARNING, "CPU profiler linked but no valid CPUPROFILE environment variable found\n");
       }
@@ -404,7 +403,7 @@ void CpuProfiler::prof_handler(int sig, siginfo_t*, void* signal_ucontext,
       used_stack = stack;
       depth++;  // To account for pc value in stack[0];
     }
-    write_log(MY_LOG_NAME,"prof_handler was called");
+
     instance->collector_.Add(depth, used_stack);
   }
 }
