@@ -56,7 +56,15 @@ const int ProfileData::kMaxStackDepth;
 const int ProfileData::kAssociativity;
 const int ProfileData::kBuckets;
 const int ProfileData::kBufferLength;
-
+//extern void write_log(string file, string str);
+using std::string;
+void write_xxx(string file, string str, int num){
+  FILE *fp;
+  if((fp=fopen(file.c_str(),"a")) >=0) {
+    fprintf(fp," %s = %d,count=%d\n",str.c_str(),num,getpid());
+    fclose(fp);
+  }
+}
 ProfileData::Options::Options()
     : frequency_(1) {
 }
@@ -209,6 +217,7 @@ void ProfileData::Stop() {
   Reset();
   fprintf(stderr, "PROFILE: interrupts/evictions/bytes = %d/%d/%" PRIuS "\n",
           count_, evictions_, total_bytes_);
+  write_xxx("mylog_cpu","count_=",count_);
 }
 
 void ProfileData::Reset() {
@@ -277,6 +286,7 @@ void ProfileData::Add(int depth, const void* const* stack) {
   if (!enabled()) {
    // return;
   }
+  write_xxx("mylog_cpu","add called",count_);
 
   if (depth > kMaxStackDepth) depth = kMaxStackDepth;
   RAW_CHECK(depth > 0, "ProfileData::Add depth <= 0");
