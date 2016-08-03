@@ -1117,6 +1117,7 @@ GetNumericProperty	.\debugallocation.cc	/^  virtual bool GetNumericProperty(cons
 GetNumericProperty	.\malloc_extension.cc	/^bool MallocExtension::GetNumericProperty(const char* property, size_t* value) {$/;"	f	class:MallocExtension
 GetNumericProperty	.\tcmalloc.cc	/^  virtual bool GetNumericProperty(const char* name, size_t* value) {$/;"	f	class:TCMallocImplementation
 GetOrDefault	.\packed-cache-inl.h	/^  V GetOrDefault(K key, V default_value) const {$/;"	f	class:PackedCache
+GetOriginalEnv	.\base\sysinfo.cc	/^bool GetOriginalEnv(const char* env_name, char* path) {$/;"	f
 GetOwnership	.\debugallocation.cc	/^  virtual MallocExtension::Ownership GetOwnership(const void* p) {$/;"	f	class:DebugMallocImplementation
 GetOwnership	.\malloc_extension.cc	/^MallocExtension::Ownership MallocExtension::GetOwnership(const void* p) {$/;"	f	class:MallocExtension
 GetOwnership	.\tcmalloc.cc	/^  virtual Ownership GetOwnership(const void* ptr) {$/;"	f	class:TCMallocImplementation
@@ -1727,8 +1728,8 @@ MIPSREG	.\base\elfcore.h	288;"	d
 MIPS_SYSCALL_CLOBBERS	.\base\linux_syscall_support.h	1629;"	d
 MIPS_SYSCALL_CLOBBERS	.\base\linux_syscall_support.h	1632;"	d
 MODULEENTRY32	.\base\sysinfo.cc	71;"	d	file:
-MODULEENTRY32	.\base\sysinfo.h	202;"	d
-MODULEENTRY32	.\base\sysinfo.h	204;"	d
+MODULEENTRY32	.\base\sysinfo.h	203;"	d
+MODULEENTRY32	.\base\sysinfo.h	205;"	d
 MREMAP_FIXED	.\base\linux_syscall_support.h	544;"	d
 MREMAP_FIXED	.\memory_region_map.cc	135;"	d	file:
 MREMAP_FIXED	.\windows\port.h	274;"	d
@@ -2307,6 +2308,8 @@ ProfilerStartWithOptions	.\profiler.cc	/^extern "C" int ProfilerStartWithOptions
 ProfilerState	.\gperftools\profiler.h	/^struct ProfilerState {$/;"	s
 ProfilerStop	.\profiler.cc	/^extern "C" PERFTOOLS_DLL_DECL void ProfilerStop() {$/;"	f
 ProfilerStop	.\profiler.cc	/^extern "C" void ProfilerStop() { }$/;"	f
+ProfilerStop	.\profiler.cc	/^extern "C" void ProfilerStop(const char* fname) { }$/;"	f
+ProfilerStop	.\profiler.cc	/^static void ProfilerStop(char* fname) {$/;"	f	file:
 ProfilingIsEnabledForAllThreads	.\heap-checker.cc	/^bool ProfilingIsEnabledForAllThreads() { return false; }$/;"	f
 ProfilingIsEnabledForAllThreads	.\profiler.cc	/^extern "C" PERFTOOLS_DLL_DECL int ProfilingIsEnabledForAllThreads() {$/;"	f
 ProfilingIsEnabledForAllThreads	.\profiler.cc	/^extern "C" int ProfilingIsEnabledForAllThreads() { return 0; }$/;"	f
@@ -3853,7 +3856,7 @@ flag_source_	.\windows\mini_disassembler_types.h	/^  int flag_source_;$/;"	m	str
 flags	.\base\low_level_alloc.cc	/^  int32 flags;            \/\/ flags passed to NewArena (ro after init)$/;"	m	struct:LowLevelAlloc::Arena	file:
 flags	.\windows\nm-pdb.c	/^  ULONG flags;$/;"	m	struct:__anon50	file:
 flags_	.\base\sysinfo.h	/^  char flags_[10];$/;"	m	class:ProcMapsIterator
-fname	.\profiler.cc	/^char fname[PATH_MAX];$/;"	v
+fname	.\profiler.cc	/^char fname[PATH_MAX]={'\\0'};$/;"	v
 fname_	.\profiledata.h	/^  char*         fname_;         \/\/ Profile file name$/;"	m	class:ProfileData
 forced_malloc	.\tests\malloc_extension_c_test.c	/^void *forced_malloc(size_t size)$/;"	f	file:
 fpr	.\base\elfcore.h	/^    double        fpr[32];	\/* Floating-Point Registers - f0-f31.        *\/$/;"	m	struct:ppc_regs

@@ -1676,6 +1676,7 @@ ExtractUntilChar	base\sysinfo.cc	/^static bool ExtractUntilChar(char *text, int 
 FillProcSelfMaps	base\sysinfo.cc	/^int FillProcSelfMaps(char buf[], int size, bool* wrote_all) {$/;"	f	namespace:tcmalloc
 FormatLine	base\sysinfo.cc	/^int ProcMapsIterator::FormatLine(char* buffer, int bufsize,$/;"	f	class:ProcMapsIterator
 GetEnvAppendPid	base\sysinfo.cc	/^bool GetEnvAppendPid(const char* env_name, char* path) {$/;"	f
+GetOriginalEnv	base\sysinfo.cc	/^bool GetOriginalEnv(const char* env_name, char* path) {$/;"	f
 GetSystemCPUsCount	base\sysinfo.cc	/^int GetSystemCPUsCount()$/;"	f
 GetUniquePathFromEnv	base\sysinfo.cc	/^bool GetUniquePathFromEnv(const char* env_name, char* path) {$/;"	f
 GetenvBeforeMain	base\sysinfo.cc	/^const char* GetenvBeforeMain(const char* name) {$/;"	f
@@ -1715,8 +1716,8 @@ tcmalloc	base\sysinfo.cc	/^namespace tcmalloc {$/;"	n	file:
 ~ProcMapsIterator	base\sysinfo.cc	/^ProcMapsIterator::~ProcMapsIterator() {$/;"	f	class:ProcMapsIterator
 Buffer	base\sysinfo.h	/^  struct Buffer {$/;"	s	class:ProcMapsIterator
 CurrentLine	base\sysinfo.h	/^  const char *CurrentLine() const { return stext_; }$/;"	f	class:ProcMapsIterator
-MODULEENTRY32	base\sysinfo.h	202;"	d
-MODULEENTRY32	base\sysinfo.h	204;"	d
+MODULEENTRY32	base\sysinfo.h	203;"	d
+MODULEENTRY32	base\sysinfo.h	205;"	d
 ProcMapsIterator	base\sysinfo.h	/^class ProcMapsIterator {$/;"	c
 _SYSINFO_H_	base\sysinfo.h	35;"	d
 buf_	base\sysinfo.h	/^    char buf_[kBufSize];$/;"	m	struct:ProcMapsIterator::Buffer
@@ -3292,6 +3293,8 @@ ProfilerStartWithOptions	profiler.cc	/^extern "C" PERFTOOLS_DLL_DECL int Profile
 ProfilerStartWithOptions	profiler.cc	/^extern "C" int ProfilerStartWithOptions(const char *fname,$/;"	f
 ProfilerStop	profiler.cc	/^extern "C" PERFTOOLS_DLL_DECL void ProfilerStop() {$/;"	f
 ProfilerStop	profiler.cc	/^extern "C" void ProfilerStop() { }$/;"	f
+ProfilerStop	profiler.cc	/^extern "C" void ProfilerStop(const char* fname) { }$/;"	f
+ProfilerStop	profiler.cc	/^static void ProfilerStop(char* fname) {$/;"	f	file:
 ProfilingIsEnabledForAllThreads	profiler.cc	/^extern "C" PERFTOOLS_DLL_DECL int ProfilingIsEnabledForAllThreads() {$/;"	f
 ProfilingIsEnabledForAllThreads	profiler.cc	/^extern "C" int ProfilingIsEnabledForAllThreads() { return 0; }$/;"	f
 Start	profiler.cc	/^bool CpuProfiler::Start(const char* fname, const ProfilerOptions* options) {$/;"	f	class:CpuProfiler
@@ -3299,7 +3302,7 @@ Stop	profiler.cc	/^void CpuProfiler::Stop(char* fname) {$/;"	f	class:CpuProfiler
 collector_	profiler.cc	/^  ProfileData   collector_;$/;"	m	class:CpuProfiler	file:
 filter_	profiler.cc	/^  int           (*filter_)(void*);$/;"	m	class:CpuProfiler	file:
 filter_arg_	profiler.cc	/^  void*         filter_arg_;$/;"	m	class:CpuProfiler	file:
-fname	profiler.cc	/^char fname[PATH_MAX];$/;"	v
+fname	profiler.cc	/^char fname[PATH_MAX]={'\\0'};$/;"	v
 instance_	profiler.cc	/^  static CpuProfiler instance_;$/;"	m	class:CpuProfiler	file:
 instance_	profiler.cc	/^CpuProfiler CpuProfiler::instance_;$/;"	m	class:CpuProfiler	file:
 lock_	profiler.cc	/^  SpinLock      lock_;$/;"	m	class:CpuProfiler	file:

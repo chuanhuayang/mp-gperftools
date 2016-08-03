@@ -276,6 +276,7 @@ bool CpuProfiler::Start(const char* fname, const ProfilerOptions* options) {
   }
 
   // Setup handler for SIGPROF interrupts
+  write_log(MY_LOG_NAME,"enable handler called");
   EnableHandler();
 
   return true;
@@ -356,6 +357,9 @@ void CpuProfiler::GetCurrentState(ProfilerState* state) {
 void CpuProfiler::EnableHandler() {
   RAW_CHECK(prof_handler_token_ == NULL, "SIGPROF handler already registered");
   prof_handler_token_ = ProfileHandlerRegisterCallback(prof_handler, this);
+  if(prof_handler_token_==NULL){
+  	write_log(MY_LOG_NAME,"Failed to set up SIGPROF handler");
+  }
   RAW_CHECK(prof_handler_token_ != NULL, "Failed to set up SIGPROF handler");
 }
 
