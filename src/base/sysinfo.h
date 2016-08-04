@@ -69,7 +69,7 @@ extern const char* GetenvBeforeMain(const char* name);
 // path to that path, and returns true.  Non-trivial for surprising
 // reasons, as documented in sysinfo.cc.  path must have space PATH_MAX.
 extern bool GetUniquePathFromEnv(const char* env_name, char* path);
-extern bool GetEnvAppendPid(const char* env_name, char* path);
+extern bool GetEnvAppendPid(const char* env_name, char* path,unsigned profile_count);
 extern bool GetOriginalEnv(const char* env_name, char* path);
 extern int GetSystemCPUsCount();
 

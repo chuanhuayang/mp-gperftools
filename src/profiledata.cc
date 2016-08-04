@@ -166,7 +166,8 @@ static void DumpProcSelfMaps(int fd) {
 // 新添加的接口
 void ProfileData::Stop(char* fname){
     //append getpid after the fname.
-  GetEnvAppendPid("CPUPROFILE",fname);
+  static unsigned profile_count = 0; 
+  GetEnvAppendPid("CPUPROFILE",fname, profile_count++);
   int fd = open(fname, O_CREAT | O_WRONLY | O_TRUNC, 0666);
   if (fd < 0) {
     // Can't open outfile for write

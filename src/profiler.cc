@@ -168,7 +168,7 @@ static void ProfilerStop(char* fname) {
 static void CpuProfilerSwitch(int signal_number){
   write_log(MY_LOG_NAME,"CpuProfilerSwitch called");
   bool static started = false;
-	static unsigned profile_count = 0;
+	//static unsigned profile_count = 0;
   static char base_profile_name[1024] = "\0";
 
 	if (base_profile_name[0] == '\0') {
@@ -185,8 +185,7 @@ static void CpuProfilerSwitch(int signal_number){
       }
   }
   else{
-	  snprintf(full_profile_name, sizeof(full_profile_name), "%s.%u",base_profile_name, profile_count++);
-      write_log(MY_LOG_NAME,full_profile_name);
+	  snprintf(full_profile_name, sizeof(full_profile_name), "%s",base_profile_name);
 	  ProfilerStop(full_profile_name);
   }
   started = !started;

@@ -210,13 +210,14 @@ bool GetUniquePathFromEnv(const char* env_name, char* path) {
   }
   return true;
 }
-bool GetEnvAppendPid(const char* env_name, char* path) {
+bool GetEnvAppendPid(const char* env_name, char* path,unsigned profile_count) {
   char* envval = getenv(env_name);
   if (envval == NULL || *envval == '\0')
     return false;
-  snprintf(path, PATH_MAX, "%s_%u", envval, (unsigned int)getpid());
+  snprintf(path, PATH_MAX, "%s_%u_%u", envval, (unsigned int)getpid(), profile_count);
   return true;
 }
+
 
 bool GetOriginalEnv(const char* env_name, char* path) {
   char* envval = getenv(env_name);
