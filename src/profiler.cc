@@ -68,6 +68,8 @@ typedef int ucontext_t;   // just to quiet the compiler, mostly
 #ifdef HAVE_CONFLICT_SIGNAL_H
 #include "conflict-signal.h"          /* used on msvc machines */
 #endif
+#define MY_LOG_NAME "my_cpuprofiler_log"  
+
 
 using std::string;
 
@@ -76,6 +78,23 @@ DEFINE_bool(cpu_profiler_unittest,
             "Determines whether or not we are running under the \
              control of a unit test. This allows us to include or \
 			 exclude certain behaviours.");
+
+
+void write_log(string file, string str){
+  FILE *fp;
+  if((fp=fopen(file.c_str(),"a")) >=0) {
+    fprintf(fp," %s,pid=%d\n",str.c_str(),getpid());
+    fclose(fp);
+  }
+}
+void write_log(string file, string str, int pid){
+  FILE *fp;
+  if((fp=fopen(file.c_str(),"a")) >=0) {
+    fprintf(fp," %s = %d,pid=%d\n",str.c_str(),pid,getpid());
+    fclose(fp);
+  }
+}
+
 
 // Collects up all profile data. This is a singleton, which is
 // initialized by a constructor at startup. If no cpu profiler
@@ -86,6 +105,7 @@ DEFINE_bool(cpu_profiler_unittest,
 // This is very useful for profiling a daemon process without
 // having to start and stop the daemon or having to modify the
 // source code to use the cpu profiler API.
+char fname[PATH_MAX]={'\0'};
 class CpuProfiler {
  public:
   CpuProfiler();
@@ -95,7 +115,7 @@ class CpuProfiler {
   bool Start(const char* fname, const ProfilerOptions* options);
 
   // Stop profiling and write the data to disk.
-  void Stop();
+  void Stop(char* fname = NULL);
 
   // Write the data to disk (and continue profiling).
   void FlushTable();
@@ -140,38 +160,35 @@ class CpuProfiler {
                            void* cpu_profiler);
 };
 
+static void ProfilerStop(char* fname) {
+	  CpuProfiler::instance_.Stop(fname);
+}
 // Signal handler that is registered when a user selectable signal
 // number is defined in the environment variable CPUPROFILESIGNAL.
-static void CpuProfilerSwitch(int signal_number)
-{
-    bool static started = false;
-	static unsigned profile_count = 0;
-    static char base_profile_name[1024] = "\0";
+static void CpuProfilerSwitch(int signal_number){
+  write_log(MY_LOG_NAME,"CpuProfilerSwitch called");
+  bool static started = false;
+	//static unsigned profile_count = 0;
+  static char base_profile_name[1024] = "\0";
 
 	if (base_profile_name[0] == '\0') {
-    	if (!GetUniquePathFromEnv("CPUPROFILE", base_profile_name)) {
+    	if (!GetOriginalEnv("CPUPROFILE", base_profile_name)) {
         	RAW_LOG(FATAL,"Cpu profiler switch is registered but no CPUPROFILE is defined");
         	return;
     	}
 	}
-    if (!started) 
-    {
-    	char full_profile_name[1024];
-
-		snprintf(full_profile_name, sizeof(full_profile_name), "%s.%u",
-                 base_profile_name, profile_count++);
-
-        if(!ProfilerStart(full_profile_name))
-        {
-            RAW_LOG(FATAL, "Can't turn on cpu profiling for '%s': %s\n",
-                    full_profile_name, strerror(errno));
-        }
-    }
-    else    
-    {
-        ProfilerStop();
-    }
-    started = !started;
+  char full_profile_name[1024];
+  if (!started) {
+	  if(!ProfilerStart(full_profile_name)){
+          RAW_LOG(FATAL, "Can't turn on cpu profiling for '%s': %s\n",
+                  full_profile_name, strerror(errno));
+      }
+  }
+  else{
+	  snprintf(full_profile_name, sizeof(full_profile_name), "%s",base_profile_name);
+	  ProfilerStop(full_profile_name);
+  }
+  started = !started;
 }
 
 // Profile data structure singleton: Constructor will check to see if
@@ -180,11 +197,11 @@ static void CpuProfilerSwitch(int signal_number)
 CpuProfiler CpuProfiler::instance_;
 
 // Initialize profiling: activated if getenv("CPUPROFILE") exists.
-CpuProfiler::CpuProfiler()
-    : prof_handler_token_(NULL) {
+CpuProfiler::CpuProfiler(): prof_handler_token_(NULL) {
   // TODO(cgd) Move this code *out* of the CpuProfile constructor into a
   // separate object responsible for initialization. With ProfileHandler there
   // is no need to limit the number of profilers.
+  write_log(MY_LOG_NAME,"CpuProfiler initialized called");
   if (getenv("CPUPROFILE") == NULL) {
     if (!FLAGS_cpu_profiler_unittest) {
       RAW_LOG(WARNING, "CPU profiler linked but no valid CPUPROFILE environment variable found\n");
@@ -216,13 +233,14 @@ CpuProfiler::CpuProfiler()
       RAW_LOG(FATAL, "Signal number %s is invalid\n", signal_number_str);
     }
   } else {
-    char fname[PATH_MAX];
-    if (!GetUniquePathFromEnv("CPUPROFILE", fname)) {
+    //char fname[PATH_MAX];
+    //if (!GetUniquePathFromEnv("CPUPROFILE", fname)) {
+    if(!GetOriginalEnv("CPUPROFILE",fname)){
       if (!FLAGS_cpu_profiler_unittest) {
         RAW_LOG(WARNING, "CPU profiler linked but no valid CPUPROFILE environment variable found\n");
       }
       return;
-	}
+	  } 
 
     if (!Start(fname, NULL)) {
       RAW_LOG(FATAL, "Can't turn on cpu profiling for '%s': %s\n",
@@ -232,6 +250,8 @@ CpuProfiler::CpuProfiler()
 }
 
 bool CpuProfiler::Start(const char* fname, const ProfilerOptions* options) {
+  write_log(MY_LOG_NAME,"CpuProfiler start function called");
+
   SpinLockHolder cl(&lock_);
 
   if (collector_.enabled()) {
@@ -243,6 +263,7 @@ bool CpuProfiler::Start(const char* fname, const ProfilerOptions* options) {
 
   ProfileData::Options collector_options;
   collector_options.set_frequency(prof_handler_state.frequency);
+  write_log(MY_LOG_NAME,"profiledata start called");
   if (!collector_.Start(fname, collector_options)) {
     return false;
   }
@@ -254,30 +275,44 @@ bool CpuProfiler::Start(const char* fname, const ProfilerOptions* options) {
   }
 
   // Setup handler for SIGPROF interrupts
+  write_log(MY_LOG_NAME,"enable handler called");
   EnableHandler();
 
   return true;
 }
 
 CpuProfiler::~CpuProfiler() {
-  Stop();
+  write_log(MY_LOG_NAME,"CpuProfiler destructor called");
+  Stop(fname);
 }
 
 // Stop profiling and write out any collected profile data
-void CpuProfiler::Stop() {
+void CpuProfiler::Stop(char* fname) {
+  write_log(MY_LOG_NAME,"CpuProfiler stop  called");
   SpinLockHolder cl(&lock_);
 
+  /*
   if (!collector_.enabled()) {
     return;
   }
-
+  */
+  if(strlen(fname) <=0){
+    return ;
+  }
   // Unregister prof_handler to stop receiving SIGPROF interrupts before
   // stopping the collector.
+
+  write_log(MY_LOG_NAME,"DisableHandler called");
   DisableHandler();
 
   // DisableHandler waits for the currently running callback to complete and
   // guarantees no future invocations. It is safe to stop the collector.
-  collector_.Stop();
+  write_log(MY_LOG_NAME,"profiledata stop called");
+  if(fname !=NULL){
+     collector_.Stop(fname);
+  }else{
+     collector_.Stop();
+  }
 }
 
 void CpuProfiler::FlushTable() {
@@ -321,6 +356,9 @@ void CpuProfiler::GetCurrentState(ProfilerState* state) {
 void CpuProfiler::EnableHandler() {
   RAW_CHECK(prof_handler_token_ == NULL, "SIGPROF handler already registered");
   prof_handler_token_ = ProfileHandlerRegisterCallback(prof_handler, this);
+  if(prof_handler_token_==NULL){
+  	write_log(MY_LOG_NAME,"Failed to set up SIGPROF handler");
+  }
   RAW_CHECK(prof_handler_token_ != NULL, "Failed to set up SIGPROF handler");
 }
 
@@ -339,7 +377,7 @@ void CpuProfiler::DisableHandler() {
 void CpuProfiler::prof_handler(int sig, siginfo_t*, void* signal_ucontext,
                                void* cpu_profiler) {
   CpuProfiler* instance = static_cast<CpuProfiler*>(cpu_profiler);
-
+  write_log(MY_LOG_NAME,"prof_handler called");
   if (instance->filter_ == NULL ||
       (*instance->filter_)(instance->filter_arg_)) {
     void* stack[ProfileData::kMaxStackDepth];
@@ -368,7 +406,7 @@ void CpuProfiler::prof_handler(int sig, siginfo_t*, void* signal_ucontext,
       used_stack = stack;
       depth++;  // To account for pc value in stack[0];
     }
-
+    write_log(MY_LOG_NAME,"profiledata add function called");
     instance->collector_.Add(depth, used_stack);
   }
 }
@@ -399,7 +437,6 @@ extern "C" PERFTOOLS_DLL_DECL int ProfilerStartWithOptions(
 extern "C" PERFTOOLS_DLL_DECL void ProfilerStop() {
   CpuProfiler::instance_.Stop();
 }
-
 extern "C" PERFTOOLS_DLL_DECL void ProfilerGetCurrentState(
     ProfilerState* state) {
   CpuProfiler::instance_.GetCurrentState(state);
@@ -420,6 +457,7 @@ extern "C" int ProfilerStartWithOptions(const char *fname,
   return 0;
 }
 extern "C" void ProfilerStop() { }
+extern "C" void ProfilerStop(const char* fname) { }
 extern "C" void ProfilerGetCurrentState(ProfilerState* state) {
   memset(state, 0, sizeof(*state));
 }

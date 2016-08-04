@@ -118,7 +118,7 @@ class ProfileData {
   // If data collection is enabled, stop data collection and write the
   // data to disk.
   void Stop();
-
+  void Stop(char* fname);
   // Stop data collection without writing anything else to disk, and
   // discard any collected data.
   void Reset();

@@ -107,7 +107,7 @@ using std::min;
 using std::max;
 using std::less;
 using std::char_traits;
-#define MY_LOG_NAME "mylog"
+#define MY_LOG_NAME "my_heapchecker_log"
 void write_file(string file, string str){
   FILE *fp;
   if((fp=fopen(file.c_str(),"a")) >=0) {
