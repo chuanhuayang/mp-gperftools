@@ -231,8 +231,8 @@ static void DumpProfileLocked(const char* reason) {
   // Make file name
   char file_name[1000];
   dump_count++;
-  snprintf(file_name, sizeof(file_name), "%s.%04d%s",
-           filename_prefix, dump_count, HeapProfileTable::kFileExt);
+  snprintf(file_name, sizeof(file_name), "%s_%d_%04d%s",
+           filename_prefix, getpid(),dump_count, HeapProfileTable::kFileExt);
 
   // Dump the profile
   RAW_VLOG(0, "Dumping heap profile to %s (%s)", file_name, reason);
@@ -559,7 +559,8 @@ static void HeapProfilerDumpSignal(int signal_number) {
 static void HeapProfilerInit() {
   // Everything after this point is for setting up the profiler based on envvar
   char fname[PATH_MAX];
-  if (!GetUniquePathFromEnv("HEAPPROFILE", fname)) {
+  //if (!GetUniquePathFromEnv("HEAPPROFILE", fname)) {
+  if (!GetOriginalEnv("HEAPPROFILE", fname)) {
     return;
   }
   // We do a uid check so we don't write out files in a setuid executable.

@@ -1970,8 +1970,8 @@ void HeapLeakChecker_RunHeapCleanups() {
 
   HeapCleaner::RunHeapCleanups();
   if (!FLAGS_heap_check_after_destructors) {
-	write_file(MY_LOG_NAME,"DoMainHeapCheck start");
-	HeapLeakChecker::DoMainHeapCheck();
+	  write_file(MY_LOG_NAME,"DoMainHeapCheck start");
+	  HeapLeakChecker::DoMainHeapCheck();
   	write_file(MY_LOG_NAME,"DoMainHeapCheck end");
   }
   write_file(MY_LOG_NAME,"HeapLeakChecker_RunHeapCleanups end ");
@@ -1991,9 +1991,7 @@ static bool internal_init_start_has_run = false;
 //
 void HeapLeakChecker_InternalInitStart() {
   write_file(MY_LOG_NAME,"internalInitStart!");
-  if (signal(SIGUSR1, sig_handler) == SIG_ERR){
-      write_file(MY_LOG_NAME,"\n can't catch SIGUSR1");
-  }
+  
 
   { SpinLockHolder l(&heap_checker_lock);
     RAW_CHECK(!internal_init_start_has_run,
@@ -2143,6 +2141,12 @@ void HeapLeakChecker_InternalInitStart() {
   // (i.e. nm will list __builtin_new and __builtin_vec_new as undefined).
   // If this happens, it is a BUILD bug to be fixed.
 
+  //register a signal function to normally exit the program, 
+  //so as to it can do leak check in the end.
+  if (signal(SIGUSR1, sig_handler) == SIG_ERR){
+      write_file(MY_LOG_NAME,"\n can't catch SIGUSR1");
+  }
+  
   RAW_VLOG(heap_checker_info_level,
            "WARNING: Perftools heap leak checker is active "
            "-- Performance may suffer--test");
@@ -2202,6 +2206,7 @@ bool HeapLeakChecker::DoMainHeapCheck() {
   }
   { SpinLockHolder l(&heap_checker_lock);
     if (!do_main_heap_check) return false;
+    write_file(MY_LOG_NAME,"do_main_heap_check is true");
     RAW_DCHECK(heap_checker_pid == getpid(), "");
     do_main_heap_check = false;  // will do it now; no need to do it more
   }
@@ -2368,11 +2373,7 @@ void HeapLeakChecker_AfterDestructors() {
   /*
   { SpinLockHolder l(&heap_checker_lock);
     *profile_name_prefix += pid_buf;//因为这里可能要开辟内存，所以不能将这一句放到锁中，否则会死锁
-  }*/
-  
-  write_file(MY_LOG_NAME,"profile_name_prefix updated");  
-  
-  /*
+  }
   { SpinLockHolder l(&heap_checker_lock);
     // can get here (via forks?) with other pids
     // if (heap_checker_pid != getpid()) return;
