@@ -82,8 +82,11 @@
 #endif
 #endif
 
+#define MY_LOG_NAME "my_heapprofiler_log"
+
 using STL_NAMESPACE::string;
 using STL_NAMESPACE::sort;
+
 
 //----------------------------------------------------------------------
 // Flags that control heap-profiling
@@ -91,6 +94,7 @@ using STL_NAMESPACE::sort;
 // The thread-safety of the profiler depends on these being immutable
 // after main starts, so don't change them.
 //----------------------------------------------------------------------
+
 
 DEFINE_int64(heap_profile_allocation_interval,
              EnvToInt64("HEAP_PROFILE_ALLOCATION_INTERVAL", 1 << 30 /*1GB*/),
@@ -181,7 +185,13 @@ static HeapProfileTable* heap_profile = NULL;  // the heap profile table
 //----------------------------------------------------------------------
 // Profile generation
 //----------------------------------------------------------------------
-
+void write_message(string file, string str){
+  FILE *fp;
+  if((fp=fopen(file.c_str(),"a")) >=0) {
+    fprintf(fp," %s,pid=%d\n",str.c_str(),getpid());
+    fclose(fp);
+  }
+}
 // Input must be a buffer of size at least 1MB.
 static char* DoGetHeapProfileLocked(char* buf, int buflen) {
   // We used to be smarter about estimating the required memory and
@@ -540,11 +550,13 @@ extern "C" void HeapProfilerDump(const char *reason) {
 // Signal handler that is registered when a user selectable signal
 // number is defined in the environment variable HEAPPROFILESIGNAL.
 static void HeapProfilerDumpSignal(int signal_number) {
+  write_message(MY_LOG_NAME,"receive heapprofilesignal signal");
   (void)signal_number;
   if (!heap_lock.TryLock()) {
     return;
   }
   if (is_on && !dumping) {
+    write_message(MY_LOG_NAME,"receive signal and dump heap-profiler files");
     DumpProfileLocked("signal");
   }
   heap_lock.Unlock();
@@ -577,10 +589,13 @@ static void HeapProfilerInit() {
     long int signal_number = strtol(signal_number_str, NULL, 10);
     intptr_t old_signal_handler = reinterpret_cast<intptr_t>(signal(signal_number, HeapProfilerDumpSignal));
     if (old_signal_handler == reinterpret_cast<intptr_t>(SIG_ERR)) {
+	  write_message(MY_LOG_NAME,"Failed to set signal .perhaps signal is invalid");
       RAW_LOG(FATAL, "Failed to set signal. Perhaps signal number %s is invalid\n", signal_number_str);
     } else if (old_signal_handler == 0) {
-      RAW_LOG(INFO,"Using signal %d as heap profiling switch", signal_number);
+      write_message(MY_LOG_NAME,"register heapprofilersignal ok");
+	  RAW_LOG(INFO,"Using signal %d as heap profiling switch", signal_number);
     } else {
+	  write_message(MY_LOG_NAME,"signal is already in used");
       RAW_LOG(FATAL, "Signal %d already in use\n", signal_number);
     }
   }
