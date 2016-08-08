@@ -108,6 +108,7 @@ using std::max;
 using std::less;
 using std::char_traits;
 #define MY_LOG_NAME "my_heapchecker_log"
+
 void write_file(string file, string str){
   FILE *fp;
   if((fp=fopen(file.c_str(),"a")) >=0) {
@@ -126,7 +127,8 @@ void write_file(string file, string str, int pid){
 void sig_handler(int signo){
   if (signo == SIGUSR1){
     write_file(MY_LOG_NAME,"received SIGUSR1");
-    exit(0);
+    //exit(0);
+    HeapLeakChecker::NoGlobalLeaks();
   } 
 }
 // If current process is being ptrace()d, 'TracerPid' in /proc/self/status
@@ -1584,13 +1586,14 @@ void HeapLeakChecker::UnIgnoreObject(const void* ptr) {
 //----------------------------------------------------------------------
 
 char* HeapLeakChecker::MakeProfileNameLocked() {
+  static int report_count = 0;
   RAW_DCHECK(lock_->IsHeld(), "");
   RAW_DCHECK(heap_checker_lock.IsHeld(), "");
-  const int len = profile_name_prefix->size() + strlen(name_) + 5 +
+  const int len = profile_name_prefix->size() + strlen(name_) + 7 + 11 + 4+
                   strlen(HeapProfileTable::kFileExt) + 1;
   char* file_name = reinterpret_cast<char*>(Allocator::Allocate(len));
-  snprintf(file_name, len, "%s.%s-end%s",
-           profile_name_prefix->c_str(), name_,
+  snprintf(file_name, len, "%s.%s-end_%d_%04d%s",//pid,report_count
+           profile_name_prefix->c_str(), name_,getpid(),report_count++,
            HeapProfileTable::kFileExt);
   return file_name;
 }
@@ -1751,11 +1754,13 @@ bool HeapLeakChecker::DoNoLeaks(ShouldSymbolize should_symbolize) {
 
   HeapProfileTable::Snapshot* leaks = NULL;
   char* pprof_file = NULL;
+  //static int report_count = 0;
+  //char final_proifle_name[1024];
   //add the pid as part of profile_name_prefix
-  const int32 our_pid = getpid();
-  char pid_buf[15];
-  snprintf(pid_buf, sizeof(pid_buf), ".%d",our_pid);
-  *profile_name_prefix += pid_buf;//因为这里会重新申请内存，所以，不能放到锁里面:
+  //const int32 our_pid = getpid();
+  //char pid_buf[15];
+  //snprintf(pid_buf, sizeof(pid_buf), ".%d",our_pid);
+  //*profile_name_prefix += pid_buf;//因为这里会重新申请内存，所以，不能放到锁里面:
   {
     // Heap activity in other threads is paused during this function
     // (i.e. until we got all profile difference info).
@@ -1991,9 +1996,7 @@ static bool internal_init_start_has_run = false;
 //
 void HeapLeakChecker_InternalInitStart() {
   write_file(MY_LOG_NAME,"internalInitStart!");
-  if (signal(SIGUSR1, sig_handler) == SIG_ERR){
-      write_file(MY_LOG_NAME,"\n can't catch SIGUSR1");
-  }
+  
 
   { SpinLockHolder l(&heap_checker_lock);
     RAW_CHECK(!internal_init_start_has_run,
@@ -2143,6 +2146,9 @@ void HeapLeakChecker_InternalInitStart() {
   // (i.e. nm will list __builtin_new and __builtin_vec_new as undefined).
   // If this happens, it is a BUILD bug to be fixed.
 
+  if (signal(SIGUSR1, sig_handler) == SIG_ERR){
+      write_file(MY_LOG_NAME,"\n can't catch SIGUSR1");
+  }
   RAW_VLOG(heap_checker_info_level,
            "WARNING: Perftools heap leak checker is active "
            "-- Performance may suffer--test");
@@ -2202,7 +2208,7 @@ bool HeapLeakChecker::DoMainHeapCheck() {
   }
   { SpinLockHolder l(&heap_checker_lock);
     if (!do_main_heap_check) return false;
-    RAW_DCHECK(heap_checker_pid == getpid(), "");
+    //RAW_DCHECK(heap_checker_pid == getpid(), "");
     do_main_heap_check = false;  // will do it now; no need to do it more
   }
 
@@ -2368,11 +2374,7 @@ void HeapLeakChecker_AfterDestructors() {
   /*
   { SpinLockHolder l(&heap_checker_lock);
     *profile_name_prefix += pid_buf;//因为这里可能要开辟内存，所以不能将这一句放到锁中，否则会死锁
-  }*/
-  
-  write_file(MY_LOG_NAME,"profile_name_prefix updated");  
-  
-  /*
+  }
   { SpinLockHolder l(&heap_checker_lock);
     // can get here (via forks?) with other pids
     // if (heap_checker_pid != getpid()) return;
