@@ -96,16 +96,14 @@ bool ProfileData::Start(const char* fname,
   }
 
   // Open output file and initialize various data structures
-  /*
-  //do this operation in the stop step;
   int fd = open(fname, O_CREAT | O_WRONLY | O_TRUNC, 0666);
   if (fd < 0) {
     // Can't open outfile for write
     return false;
   }
-  */
+
   start_time_ = time(NULL);
-  //fname_ = strdup(fname);
+  fname_ = strdup(fname);
 
   // Reset counters
   num_evicted_ = 0;
@@ -126,7 +124,7 @@ bool ProfileData::Start(const char* fname,
   evict_[num_evicted_++] = period;                // Period (microseconds)
   evict_[num_evicted_++] = 0;                     // Padding
 
-  //out_ = fd;
+  out_ = fd;
 
   return true;
 }
@@ -163,24 +161,10 @@ static void DumpProcSelfMaps(int fd) {
     FDWrite(fd, linebuf.buf_, written);
   }
 }
-// 新添加的接口
-void ProfileData::Stop(char* fname){
-    //append getpid after the fname.
-  static unsigned profile_count = 0; 
-  GetEnvAppendPid("CPUPROFILE",fname, profile_count++);
-  int fd = open(fname, O_CREAT | O_WRONLY | O_TRUNC, 0666);
-  if (fd < 0) {
-    // Can't open outfile for write
-    return;
-  }
-  out_ = fd;
-  fname_ = strdup(fname);
-  Stop();
-}
 
 void ProfileData::Stop() {
   if (!enabled()) {
-     return;
+    return;
   }
 
   // Move data from hash table to eviction buffer
@@ -276,7 +260,7 @@ void ProfileData::FlushTable() {
 
 void ProfileData::Add(int depth, const void* const* stack) {
   if (!enabled()) {
-   // return;
+    return;
   }
 
   if (depth > kMaxStackDepth) depth = kMaxStackDepth;
