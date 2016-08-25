@@ -363,7 +363,7 @@ void CpuProfiler::DisableHandler() {
 void CpuProfiler::prof_handler(int sig, siginfo_t*, void* signal_ucontext,
                                void* cpu_profiler) {
   CpuProfiler* instance = static_cast<CpuProfiler*>(cpu_profiler);
-  write_log(MY_LOG_NAME,"prof_handler called");
+  //write_log(MY_LOG_NAME,"prof_handler called");
   if (instance->filter_ == NULL ||
       (*instance->filter_)(instance->filter_arg_)) {
     void* stack[ProfileData::kMaxStackDepth];
@@ -392,7 +392,7 @@ void CpuProfiler::prof_handler(int sig, siginfo_t*, void* signal_ucontext,
       used_stack = stack;
       depth++;  // To account for pc value in stack[0];
     }
-    write_log(MY_LOG_NAME,"profiledata add function called");
+    //write_log(MY_LOG_NAME,"profiledata add function called");
     instance->collector_.Add(depth, used_stack);
   }
 }
