@@ -173,7 +173,7 @@ static void CpuProfilerSwitch(int signal_number){
   if (!started) {
   	char full_profile_name[1024];
 
-	  snprintf(full_profile_name, sizeof(full_profile_name), "%s_%d_%4d.prof",
+	  snprintf(full_profile_name, sizeof(full_profile_name), "%s_%d_%04d.prof",
                base_profile_name,getpid(), profile_count++);
 
     if(!ProfilerStart(full_profile_name))
