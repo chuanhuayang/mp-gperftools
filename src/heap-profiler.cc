@@ -231,8 +231,9 @@ static void DumpProfileLocked(const char* reason) {
   // Make file name
   char file_name[1000];
   dump_count++;
-  snprintf(file_name, sizeof(file_name), "%s_%d_%04d%s",
-           filename_prefix, getpid(),dump_count, HeapProfileTable::kFileExt);
+  //snprintf(file_name, sizeof(file_name), "%s_%d_%04d%s", filename_prefix, getpid(),dump_count, HeapProfileTable::kFileExt);
+  snprintf(file_name, sizeof(file_name), "%s_%d_%04d.heap",
+           filename_prefix, getpid(),dump_count);
 
   // Dump the profile
   RAW_VLOG(0, "Dumping heap profile to %s (%s)", file_name, reason);

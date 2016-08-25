@@ -161,7 +161,7 @@ class CpuProfiler {
 static void CpuProfilerSwitch(int signal_number){
   write_log(MY_LOG_NAME,"CpuProfilerSwitch called");
   bool static started = false;
-	static unsigned profile_count = 0;
+	static int profile_count = 0;
   static char base_profile_name[1024] = "\0";
 
 	if (base_profile_name[0] == '\0') {
@@ -173,7 +173,7 @@ static void CpuProfilerSwitch(int signal_number){
   if (!started) {
   	char full_profile_name[1024];
 
-	  snprintf(full_profile_name, sizeof(full_profile_name), "%s_%d_%u",
+	  snprintf(full_profile_name, sizeof(full_profile_name), "%s_%d_%4d.prof",
                base_profile_name,getpid(), profile_count++);
 
     if(!ProfilerStart(full_profile_name))

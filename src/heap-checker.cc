@@ -1592,9 +1592,11 @@ char* HeapLeakChecker::MakeProfileNameLocked() {
   const int len = profile_name_prefix->size() + strlen(name_) + 7 + 11 + 4+
                   strlen(HeapProfileTable::kFileExt) + 1;
   char* file_name = reinterpret_cast<char*>(Allocator::Allocate(len));
-  snprintf(file_name, len, "%s.%s-end_%d_%04d%s",//pid,report_count
-           profile_name_prefix->c_str(), name_,getpid(),report_count++,
-           HeapProfileTable::kFileExt);
+  //snprintf(file_name, len, "%s.%s-end_%d_%04d%s",//pid,report_count
+  //         profile_name_prefix->c_str(), name_,getpid(),report_count++,
+  //         HeapProfileTable::kFileExt);
+  snprintf(file_name, len, "%s_%d_%04d.check",//pid,report_count
+           profile_name_prefix->c_str(),getpid(),report_count++);
   return file_name;
 }
 
